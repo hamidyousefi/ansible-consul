@@ -1,0 +1,17 @@
+datacenter          = "{{ consul_datacenter }}"
+data_dir            = "/var/lib/consul"
+encrypt             = "{{ consul_encrypt_key }}"
+ui                  = {% if consul_ui_enabled %}true{% else %}false{% endif %}
+
+client_addr         = "{{ ansible_host }}"
+
+retry_join          = [
+    {%- for server in groups[consul_servers_host_group] -%}
+        "{{ hostvars[server].ansible_host }}"
+        {%- if not loop.last -%}, {% endif -%}
+    {%- endfor -%}
+]
+
+performance {
+  raft_multiplier = 1
+}

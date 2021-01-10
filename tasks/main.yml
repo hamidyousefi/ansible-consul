@@ -1,0 +1,109 @@
+---
+- name: install necessary packages
+  apt:
+    name: unzip
+    force_apt_get: yes
+    update_cache: yes
+
+- name: create consul group
+  group:
+    name: consul
+    system: yes
+    state: present
+
+- name: create consul user
+  user:
+    name: consul
+    group: consul
+    system: yes
+    home: /etc/consul.d
+    shell: /bin/false
+    comment: "Consul Service User"
+
+- name: create necessary directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: consul
+    group: consul
+    mode: '0755'
+  with_items:
+    - /tmp/consul
+    - /etc/consul.d
+    - /var/lib/consul
+
+- name: download consul package file
+  unarchive:
+    src: "https://releases.hashicorp.com/consul/{{ consul_version }}/consul_{{ consul_version }}_linux_amd64.zip"
+    dest: /tmp/consul
+    remote_src: yes
+  environment:
+    http_proxy: "{{ proxy.http }}"
+    https_proxy: "{{ proxy.https }}"
+
+- name: place the consul binary to correct place
+  copy:
+    src: /tmp/consul/consul
+    dest: /usr/local/bin/consul
+    remote_src: yes
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: remove unnecessary leftovers
+  file:
+    path: /tmp/consul
+    state: absent
+
+- name: add consul config file
+  template:
+    src: "{{ item }}.j2"
+    dest: "/etc/consul.d/{{ item }}"
+    owner: consul
+    group: consul
+    mode: '0640'
+  with_items:
+    - consul.hcl
+    - acl.hcl
+  notify:
+    - enable and start consul service
+
+- name: add systemd unit file for consul service
+  template:
+    src: consul.service.j2
+    dest: /usr/lib/systemd/system/consul.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - enable and start consul service
+
+- name: configure consul servers
+  block:
+    - name: add consul server config files
+      template:
+        src: "server.hcl.j2"
+        dest: "/etc/consul.d/server.hcl"
+        owner: consul
+        group: consul
+        mode: '0640'
+      notify:
+        - enable and start consul service
+
+    - name: create global management token
+      command: consul acl bootstrap
+      register: consul_acl_token
+      run_once: yes
+      ignore_errors: yes
+
+    - name: wait to consul service bootstrap
+      wait_for:
+        timeout: 16
+      delegate_to: localhost
+
+    - name: print consul admin acl token
+      debug:
+        msg: "{{ consul_acl_token }}"
+      run_once: yes
+      when: not consul_acl_token.failed
+  when: inventory_hostname in groups[consul_servers_host_group]
