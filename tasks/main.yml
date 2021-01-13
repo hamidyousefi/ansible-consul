@@ -90,15 +90,20 @@
       notify:
         - enable and start consul service
 
+    - name: wait to consul service bootstrap
+        wait_for:
+          timeout: 8
+        delegate_to: localhost
+
     - name: create global management token
-      command: consul acl bootstrap
+      command: "consul acl bootstrap -http-addr={{ ansible_host }}:8500"
       register: consul_acl_token
       run_once: yes
       ignore_errors: yes
 
-    - name: wait to consul service bootstrap
+    - name: wait to generate token
       wait_for:
-        timeout: 16
+        timeout: 4
       delegate_to: localhost
 
     - name: print consul admin acl token
