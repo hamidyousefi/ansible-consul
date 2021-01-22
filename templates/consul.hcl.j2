@@ -3,7 +3,8 @@ data_dir            = "/var/lib/consul"
 encrypt             = "{{ consul_encrypt_key }}"
 ui                  = {% if consul_ui_enabled %}true{% else %}false{% endif %}
 
-client_addr         = "{{ ansible_host }}"
+advertise_addr      = "{{ ansible_host }}"
+client_addr         = "0.0.0.0"
 
 retry_join          = [
     {%- for server in groups[consul_servers_host_group] -%}
