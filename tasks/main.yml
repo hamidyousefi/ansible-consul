@@ -31,6 +31,7 @@
     - /tmp/consul
     - /etc/consul.d
     - /var/lib/consul
+    - /var/log/consul
 
 - name: download consul package file
   unarchive:
@@ -112,3 +113,15 @@
       run_once: yes
       when: not consul_acl_token.failed
   when: inventory_hostname in groups[consul_servers_host_group]
+
+- name: configure consul agents
+  block:
+    - name: add consul client config file
+      template:
+        src: client.hcl.j2
+        dest: /etc/consul.d/client.hcl
+        owner: consul
+        group: consul
+        mode: '0640'
+      notify:
+        - enable and start consul service

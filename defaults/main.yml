@@ -4,3 +4,7 @@ consul_ui_enabled: yes
 consul_servers_host_group: "servers"
 consul_datacenter: "dc1"
 consul_encrypt_key: "consul-encrypt-string"
+
+consul_logs_level: info
+consul_logs_rotation: 24h
+consul_logs_max_files: 7
